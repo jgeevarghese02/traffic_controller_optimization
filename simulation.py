@@ -48,19 +48,15 @@ def load_images():
         "truck_east": pygame.image.load("images/truck_eastside.png"),
         "truck_west": pygame.image.load("images/truck_westside.png"),
         #Traffic signals
-        "traffic_light_red_vertical": pygame.image.load("images/red_vertical.png"),
-        "traffic_light_yellow_vertical": pygame.image.load("images/yellow_vertical.png"),
-        "traffic_light_green_vertical": pygame.image.load("images/green_vertical.png"),
-        "traffic_light_red_horizontal": pygame.image.load("images/red_horizontal.png"),
-        "traffic_light_yellow_horizontal": pygame.image.load("images/yellow_horizontal.png"),
-        "traffic_light_green_horizontal": pygame.image.load("images/green_horizontal.png"),
+        "traffic_light_red_vertical": pygame.image.load("images\Traffic_light_red_vert.png"),
+        "traffic_light_yellow_vertical": pygame.image.load("images\Traffic_light_yellow_vert.png"),
+        "traffic_light_green_vertical": pygame.image.load("images\Traffic_light_green_vert.png"),
+        "traffic_light_red_horizontal": pygame.image.load("images\Traffic_light_red_hor.png"),
+        "traffic_light_yellow_horizontal": pygame.image.load("images\Traffic_light_yellow_hor.png"),
+        "traffic_light_green_horizontal": pygame.image.load("images\Traffic_light_green_hor.png"),
     }
     return images
 
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
 def generate_cars(screen_width, screen_height):
     # Calculate scaling percentages using the function
     width_adjustment_percent, height_adjustment_percent = calculate_scaling_percentages(screen_width, screen_height)
@@ -114,10 +110,6 @@ def generate_cars(screen_width, screen_height):
         for static, ml in points:
             cars.append(Car(static[0], static[1], direction, width_adjustment_percent, height_adjustment_percent))
             cars.append(Car(ml[0], ml[1], direction, width_adjustment_percent, height_adjustment_percent))
-<<<<<<< Updated upstream
-
-    return cars
-=======
     return cars
 
 
@@ -226,7 +218,6 @@ def traffic_light_timer(vertical_lights, horizontal_lights):
         for light in horizontal_lights:
             light.switch_state("yellow")
         time.sleep(durations["yellow"])
->>>>>>> Stashed changes
 
 
 def process_background(background, screen_size):
@@ -253,10 +244,7 @@ class Car:
     def render(self, screen):
         screen.blit(self.image, (self.x, self.y))
 
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
 def main():
     screen = initialize_pygame()
     images = load_images()
@@ -266,15 +254,10 @@ def main():
 
     width_adjustment_percent, height_adjustment_percent = calculate_scaling_percentages(screen_width, screen_height)
 
-<<<<<<< Updated upstream
-    cars = generate_cars(screen_width, screen_height)
-=======
-    
     cars = generate_cars(screen_width, screen_height)
 
     # Generate TrafficLight objects
     vertical_lights, horizontal_lights = generate_traffic_lights(screen_width, screen_height, images, screen)
->>>>>>> Stashed changes
 
     # Start traffic light timer thread
     timer_thread = threading.Thread(target=traffic_light_timer, args=(vertical_lights, horizontal_lights))
@@ -290,8 +273,6 @@ def main():
 
         screen.blit(background, (0, 0))
 
-<<<<<<< Updated upstream
-=======
          # Render vertical traffic lights
         for light in vertical_lights:
             light.render()
@@ -300,7 +281,6 @@ def main():
         for light in horizontal_lights:
             light.render()
 
->>>>>>> Stashed changes
         for car in cars:
             car.render(screen)
 
@@ -309,7 +289,6 @@ def main():
         clock.tick(60)
 
     pygame.quit()
-
 
 
 if __name__ == "__main__":
