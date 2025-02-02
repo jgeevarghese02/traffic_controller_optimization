@@ -13,7 +13,6 @@ def get_screen_size():
     root.destroy()
     return screen_width, screen_height
 
-
 # Function to calculate scaling percentages
 def calculate_scaling_percentages(screen_width, screen_height):
     original_width, original_height = 2360, 1640
@@ -21,14 +20,12 @@ def calculate_scaling_percentages(screen_width, screen_height):
     height_adjustment_percent = screen_height / original_height
     return width_adjustment_percent, height_adjustment_percent
 
-
 def initialize_pygame():
     pygame.init()
     screen_width, screen_height = get_screen_size()
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption("Traffic Simulation")
     return screen
-
 
 def load_images():
     images = {
@@ -54,6 +51,13 @@ def load_images():
         "traffic_light_red_horizontal": pygame.image.load("images\Traffic_light_red_hor.png"),
         "traffic_light_yellow_horizontal": pygame.image.load("images\Traffic_light_yellow_hor.png"),
         "traffic_light_green_horizontal": pygame.image.load("images\Traffic_light_green_hor.png"),
+        #ML Traffic signals
+        "ML_traffic_light_red_vertical": pygame.image.load("images\Traffic_light_red_vert.png"),
+        "ML_traffic_light_yellow_vertical": pygame.image.load("images\Traffic_light_yellow_vert.png"),
+        "ML_traffic_light_green_vertical": pygame.image.load("images\Traffic_light_green_vert.png"),
+        "ML_traffic_light_red_horizontal": pygame.image.load("images\Traffic_light_red_hor.png"),
+        "ML_traffic_light_yellow_horizontal": pygame.image.load("images\Traffic_light_yellow_hor.png"),
+        "ML_traffic_light_green_horizontal": pygame.image.load("images\Traffic_light_green_hor.png"),
     }
     return images
 
@@ -112,9 +116,8 @@ def generate_cars(screen_width, screen_height):
             cars.append(Car(ml[0], ml[1], direction, width_adjustment_percent, height_adjustment_percent))
     return cars
 
-
 class TrafficLight:
-    def __init__(self, x, y, orientation, screen, images):
+    def __init__(self, x, y, orientation, screen, images, width_percent, height_percent):
         """
         Initialize a TrafficLight object.
         :param x: X-coordinate of the traffic light.
@@ -130,6 +133,16 @@ class TrafficLight:
         self.images = images
         self.state = "red"  # Default state
 
+        self.images = {state: img.copy() for state, img in images.items()}
+
+        for state in self.images:
+            self.images[state] = self.images[state].convert_alpha()  # Convert to 32-bit surface
+            original_width, original_height = self.images[state].get_size()
+            scaled_width = int(original_width * width_percent)
+            scaled_height = int(original_height * height_percent)
+            self.images[state] = pygame.transform.smoothscale(self.images[state], (scaled_width, scaled_height))
+
+
     def switch_state(self, next_state):
         """Change the traffic light to a new state."""
         self.state = next_state
@@ -137,8 +150,6 @@ class TrafficLight:
     def render(self):
         """Draw the traffic light on the screen based on its current state."""
         self.screen.blit(self.images[self.state], (self.x, self.y))
-
-
 
 def generate_traffic_lights(screen_width, screen_height, images, screen):
     """
@@ -153,10 +164,30 @@ def generate_traffic_lights(screen_width, screen_height, images, screen):
 
     traffic_light_positions = {
         "vertical": [
-            (int( 464* width_adjustment_percent), int( 534* height_adjustment_percent)),
+            #static northside lights
+            (int( 282* width_adjustment_percent), int( 464* height_adjustment_percent)),
+            (int( 459* width_adjustment_percent), int( 539* height_adjustment_percent)),
+            (int( 702* width_adjustment_percent), int( 464* height_adjustment_percent)),
+            (int( 880* width_adjustment_percent), int( 539* height_adjustment_percent)),
+            
+            #static southside lights
+            (int( 282* width_adjustment_percent), int( 1003* height_adjustment_percent)),
+            (int( 459* width_adjustment_percent), int( 1079* height_adjustment_percent)),
+            (int( 702* width_adjustment_percent), int( 1003* height_adjustment_percent)),
+            (int( 880* width_adjustment_percent), int( 1079* height_adjustment_percent)),
         ],
         "horizontal": [
-            (int( 377* width_adjustment_percent), int( 447* height_adjustment_percent)),
+            #static northside lights
+            (int( 379* width_adjustment_percent), int( 443* height_adjustment_percent)),
+            (int( 302* width_adjustment_percent), int( 620* height_adjustment_percent)),
+            (int( 799* width_adjustment_percent), int( 443* height_adjustment_percent)),
+            (int( 722* width_adjustment_percent), int( 620* height_adjustment_percent)),
+
+            #static southside lights
+            (int( 379* width_adjustment_percent), int( 983* height_adjustment_percent)),
+            (int( 302* width_adjustment_percent), int( 1161* height_adjustment_percent)),
+            (int( 799* width_adjustment_percent), int( 983* height_adjustment_percent)),
+            (int( 722* width_adjustment_percent), int( 1161* height_adjustment_percent)),
         ]
     }
 
@@ -176,14 +207,12 @@ def generate_traffic_lights(screen_width, screen_height, images, screen):
     horizontal_lights = []
 
     for x, y in traffic_light_positions["vertical"]:
-        vertical_lights.append(TrafficLight(x, y, "vertical", screen, vertical_images))
+        vertical_lights.append(TrafficLight(x, y, "vertical", screen, vertical_images, width_adjustment_percent, height_adjustment_percent))
 
     for x, y in traffic_light_positions["horizontal"]:
-        horizontal_lights.append(TrafficLight(x, y, "horizontal", screen, horizontal_images))
+        horizontal_lights.append(TrafficLight(x, y, "horizontal", screen, horizontal_images, width_adjustment_percent, height_adjustment_percent))
 
     return vertical_lights, horizontal_lights
-
-
 
 def traffic_light_timer(vertical_lights, horizontal_lights):
     """
@@ -219,12 +248,10 @@ def traffic_light_timer(vertical_lights, horizontal_lights):
             light.switch_state("yellow")
         time.sleep(durations["yellow"])
 
-
 def process_background(background, screen_size):
     rotated_background = pygame.transform.rotate(background, 90)
     scaled_background = pygame.transform.smoothscale(rotated_background, screen_size)
     return scaled_background
-
 
 class Car:
     def __init__(self, x, y, direction, width_percent, height_percent):
@@ -243,7 +270,6 @@ class Car:
 
     def render(self, screen):
         screen.blit(self.image, (self.x, self.y))
-
 
 def main():
     screen = initialize_pygame()
@@ -289,7 +315,6 @@ def main():
         clock.tick(60)
 
     pygame.quit()
-
 
 if __name__ == "__main__":
     main()
