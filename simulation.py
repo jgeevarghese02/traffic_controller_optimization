@@ -87,43 +87,67 @@ def generate_vehicles(vehicles, screen_width, screen_height):
 
     # Adjusted car positions after scaling
     car_positions = {
-        "east": [
+        "east_1": [
             [(int(4 * width_adjustment_percent), int(552 * height_adjustment_percent)), 
-             (int(1191 * width_adjustment_percent), int(552 * height_adjustment_percent))],
+             (int(1191 * width_adjustment_percent), int(552 * height_adjustment_percent))]
+        ],
+        "east_2": [
             [(int(4 * width_adjustment_percent), int(591 * height_adjustment_percent)), 
-             (int(1191 * width_adjustment_percent), int(591 * height_adjustment_percent))],
+             (int(1191 * width_adjustment_percent), int(591 * height_adjustment_percent))]
+        ],
+        "east_3": [
             [(int(4 * width_adjustment_percent), int(1092 * height_adjustment_percent)), 
-             (int(1191 * width_adjustment_percent), int(1092 * height_adjustment_percent))],
+             (int(1191 * width_adjustment_percent), int(1092 * height_adjustment_percent))]
+        ],
+        "east_4": [
             [(int(4 * width_adjustment_percent), int(1131 * height_adjustment_percent)), 
              (int(1191 * width_adjustment_percent), int(1131 * height_adjustment_percent))]
         ],
-        "south": [
+        "south_1":[
             [(int(309 * width_adjustment_percent), int(4 * height_adjustment_percent)), 
-             (int(1490 * width_adjustment_percent), int(4 * height_adjustment_percent))],
+             (int(1490 * width_adjustment_percent), int(4 * height_adjustment_percent))]
+        ],
+        "south_2":[
             [(int(350 * width_adjustment_percent), int(4 * height_adjustment_percent)), 
-             (int(1530 * width_adjustment_percent), int(4 * height_adjustment_percent))],
+             (int(1530 * width_adjustment_percent), int(4 * height_adjustment_percent))]
+        ],
+        "south_3":[
             [(int(730 * width_adjustment_percent), int(4 * height_adjustment_percent)), 
-             (int(1910 * width_adjustment_percent), int(4 * height_adjustment_percent))],
+             (int(1910 * width_adjustment_percent), int(4 * height_adjustment_percent))]
+        ],
+        "south_4":[
             [(int(770 * width_adjustment_percent), int(4 * height_adjustment_percent)), 
              (int(1953 * width_adjustment_percent), int(4 * height_adjustment_percent))]
         ],
-        "west": [
+        "west_1":[
             [(int(1127 * width_adjustment_percent), int(472 * height_adjustment_percent)), 
-             (int(2317 * width_adjustment_percent), int(472 * height_adjustment_percent))],
+             (int(2317 * width_adjustment_percent), int(472 * height_adjustment_percent))]
+        ],
+        "west_2":[
             [(int(1127 * width_adjustment_percent), int(510 * height_adjustment_percent)), 
-             (int(2317 * width_adjustment_percent), int(510 * height_adjustment_percent))],
+             (int(2317 * width_adjustment_percent), int(510 * height_adjustment_percent))]
+        ],
+        "west_3":[
             [(int(1127 * width_adjustment_percent), int(1011 * height_adjustment_percent)), 
-             (int(2317 * width_adjustment_percent), int(1011 * height_adjustment_percent))],
+             (int(2317 * width_adjustment_percent), int(1011 * height_adjustment_percent))]
+        ],
+        "west_4":[
             [(int(1127 * width_adjustment_percent), int(1050 * height_adjustment_percent)), 
              (int(2317 * width_adjustment_percent), int(1050 * height_adjustment_percent))]
         ],
-        "north": [
+        "north_1":[
             [(int(389 * width_adjustment_percent), int(1600 * height_adjustment_percent)), 
-             (int(1570 * width_adjustment_percent), int(1600 * height_adjustment_percent))],
+             (int(1570 * width_adjustment_percent), int(1600 * height_adjustment_percent))]
+        ],
+        "north_2":[
             [(int(430 * width_adjustment_percent), int(1600 * height_adjustment_percent)), 
-             (int(1608 * width_adjustment_percent), int(1600 * height_adjustment_percent))],
+             (int(1608 * width_adjustment_percent), int(1600 * height_adjustment_percent))]
+        ],
+        "north_3":[
             [(int(809 * width_adjustment_percent), int(1600 * height_adjustment_percent)), 
-             (int(1990 * width_adjustment_percent), int(1600 * height_adjustment_percent))],
+             (int(1990 * width_adjustment_percent), int(1600 * height_adjustment_percent))]
+        ],
+        "north_4":[
             [(int(851 * width_adjustment_percent), int(1600 * height_adjustment_percent)), 
              (int(2032 * width_adjustment_percent), int(1600 * height_adjustment_percent))]
         ]
@@ -133,10 +157,13 @@ def generate_vehicles(vehicles, screen_width, screen_height):
         direction = random.choice(list(car_positions.keys()))
         static, ml = random.choice(car_positions[direction])
 
-        vehicle_type = random.choice([Car, Truck, Motorcycle])
+        #vehicle_type = random.choice([Car, Truck, Motorcycle])
+        vehicle_type = random.choice([Car])
+        path = random.choice([1,2,3,4])
 
-        static_vehicle = (vehicle_type(static[0], static[1], direction, width_adjustment_percent, height_adjustment_percent))
-        ml_vehicle = (vehicle_type(ml[0], ml[1], direction, width_adjustment_percent, height_adjustment_percent))
+
+        static_vehicle = (vehicle_type(static[0], static[1], direction, width_adjustment_percent, height_adjustment_percent, "static", path))
+        ml_vehicle = (vehicle_type(ml[0], ml[1], direction, width_adjustment_percent, height_adjustment_percent, "ml", path))
 
         vehicles.append(static_vehicle)
         vehicles.append(ml_vehicle)
@@ -146,60 +173,40 @@ def generate_vehicles(vehicles, screen_width, screen_height):
         vehicle_timers[ml_vehicle] = time.time()
         time.sleep(1)
 
-
-
-    # cars = []
-    # for _ in range(100):  # Run for 100 seconds
-    #     direction = random.choice(list(car_positions.keys()))
-    #     static, ml = random.choice(car_positions[direction])
-
-    #     cars.append(Car(static[0], static[1], direction, width_adjustment_percent, height_adjustment_percent))
-    #     cars.append(Car(ml[0], ml[1], direction, width_adjustment_percent, height_adjustment_percent))
-
-    #     time.sleep(1)
-
-
-    # direction = random.choice(list(car_positions.keys()))
-    # static , ml = random.choice(car_positions[direction])
-    # cars.append(Car(static[0], static[1], direction, width_adjustment_percent, height_adjustment_percent))
-    # cars.append(Car(ml[0], ml[1], direction, width_adjustment_percent, height_adjustment_percent))
-    # time.sleep(0.5)
-
-    #return cars
-
-    # for direction, points in car_positions.items():
-    #     for static, ml in points:
-    #         cars.append(Car(static[0], static[1], direction, width_adjustment_percent, height_adjustment_percent))
-    #         cars.append(Car(ml[0], ml[1], direction, width_adjustment_percent, height_adjustment_percent))
-
-
-
-
 def process_background(background, screen_size):
     rotated_background = pygame.transform.rotate(background, 90)
     scaled_background = pygame.transform.smoothscale(rotated_background, screen_size)
     return scaled_background
 ###################################################################################################################################
 class Car:
-    def __init__(self, x, y, direction, width_percent, height_percent):
+    car_speed = 2
+    def __init__(self, x, y, direction, width_percent, height_percent, vehicle_side, path):
         self.x = x
         self.y = y
+        self.x_scaled = int(x * width_percent)
+        self.y_scaled = int(x * height_percent)
         self.inital_direction = direction
+        self.vehicle_side = vehicle_side
+        self.path = path
+
+        trim_direction = str(direction[:-2])
+        self.image = pygame.image.load(f"images/car_{trim_direction}side.png")
+        original_width , original_height = self.image.get_size()
+        scaled_width = int(original_width * width_percent)
+        scaled_height = int(original_height * height_percent)
+        self.image = pygame.transform.smoothscale(self.image, (scaled_width, scaled_height))
+
+    def change_image_direcion(self, direction, width_percent, height_percent):
+        trim_direction = str(direction[:-2])
         self.image = pygame.image.load(f"images/car_{direction}side.png")
         original_width , original_height = self.image.get_size()
         scaled_width = int(original_width * width_percent)
         scaled_height = int(original_height * height_percent)
         self.image = pygame.transform.smoothscale(self.image, (scaled_width, scaled_height))
 
-    def move(self):
-        if self.inital_direction == "east":
-            self.x += 2
-        elif self.inital_direction == "south":
-            self.y += 2
-        elif self.inital_direction == "west":
-            self.x -= 2
-        elif self.inital_direction == "north":
-            self.y -= 2
+    def move(self, car_speed, width_percent, height_percent):
+        temp = 1
+
 
     def render(self, screen):
         screen.blit(self.image, (self.x, self.y))
@@ -292,7 +299,7 @@ def main():
                     vehicles.remove(vehicle)
 
                 else:
-                    vehicle.move()
+                    vehicle.move(vehicle.car_speed, width_adjustment_percent, height_adjustment_percent)
                     vehicle.render(screen)
             pygame.display.flip()
             time.sleep(0.02)
