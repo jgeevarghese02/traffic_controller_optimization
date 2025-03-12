@@ -4,6 +4,7 @@ import csv
 import random
 import time
 import threading
+import os
 
 simulation_running = True
 ###################################################################################################
@@ -137,6 +138,8 @@ class BaseVehicle:
         self.side = side
         self.spawn_time = time.time() #Starts timer when vehicle is generated, this is the metric which we will use to conclude weather or not traffic signals controlled by machine learning are better then what we have today
         self.light_state = light_state  # dictionary of node_name -> TrafficLight object
+        self.num_nodes_passed = 0 #Will update later on/during sim
+        self.vehicle_type = "Generic" #Place holder
 
     def choose_next_node(self):#Cannot use a shortest path traversal algo like Dijkstra or Greedy because if I randomly choose a entry and exit node, there might never be a path between these two becasue of the layout of the streets
         neighbors = self.graph[self.current_node]["neighbors"]
@@ -180,6 +183,7 @@ class BaseVehicle:
 
         if dist < current_speed:
             self.current_node = self.target_node
+            self.num_nodes_passed += 1
             self.x = target_x
             self.y = target_y
             self.target_node = self.choose_next_node()
@@ -203,6 +207,7 @@ class BaseVehicle:
 class Car(BaseVehicle):
     def __init__(self, images, graph, start_node, side, speed=1.5, light_state=None): #Actual Speed of Car
         super().__init__(graph, start_node, side, speed, light_state)
+        self.vehicle_type = "Car"
         self.images = images
         self.set_image_by_direction(graph[start_node]["direction"])
 
@@ -213,6 +218,7 @@ class Car(BaseVehicle):
 class Truck(BaseVehicle):
     def __init__(self, images, graph, start_node, side, speed=1, light_state=None): #Actual Speed of Truck
         super().__init__(graph, start_node, side, speed, light_state)
+        self.vehicle_type = "Truck"
         self.images = images
         self.set_image_by_direction(graph[start_node]["direction"])
 
@@ -223,6 +229,7 @@ class Truck(BaseVehicle):
 class Motorcycle(BaseVehicle):
     def __init__(self, images, graph, start_node, side, speed=1.75, light_state=None): #Actual Speed of Motorcycle
         super().__init__(graph, start_node, side, speed, light_state)
+        self.vehicle_type = "Motorcycle"
         self.images = images
         self.set_image_by_direction(graph[start_node]["direction"])
 
@@ -233,6 +240,7 @@ class Motorcycle(BaseVehicle):
 class Schoolbus(BaseVehicle):
     def __init__(self, images, graph, start_node, side, speed=1, light_state=None): #Actual Speed of School bus
         super().__init__(graph, start_node, side, speed, light_state)
+        self.vehicle_type = "Schoolbus"
         self.images = images
         self.set_image_by_direction(graph[start_node]["direction"])
 
@@ -243,6 +251,7 @@ class Schoolbus(BaseVehicle):
 class Policecar(BaseVehicle):
     def __init__(self, images, graph, start_node, side, speed=1.5, light_state=None): #Actual Speed of Police car
         super().__init__(graph, start_node, side, speed, light_state)
+        self.vehicle_type = "Police_Car"
         self.images = images
         self.set_image_by_direction(graph[start_node]["direction"])
 
@@ -253,6 +262,7 @@ class Policecar(BaseVehicle):
 class Bulldozer(BaseVehicle):
     def __init__(self, images, graph, start_node, side, speed=0.8, light_state=None): #Actual Speed of Police car
         super().__init__(graph, start_node, side, speed, light_state)
+        self.vehicle_type = "Bulldozer"
         self.images = images
         self.set_image_by_direction(graph[start_node]["direction"])
 
@@ -263,6 +273,7 @@ class Bulldozer(BaseVehicle):
 class Ambulance(BaseVehicle):
     def __init__(self, images, graph, start_node, side, speed=1, light_state=None): #Actual Speed of Police car
         super().__init__(graph, start_node, side, speed, light_state)
+        self.vehicle_type = "Ambulance"
         self.images = images
         self.set_image_by_direction(graph[start_node]["direction"])
 
@@ -273,6 +284,7 @@ class Ambulance(BaseVehicle):
 class Semitruck(BaseVehicle):
     def __init__(self, images, graph, start_node, side, speed=1, light_state=None): #Actual Speed of Police car
         super().__init__(graph, start_node, side, speed, light_state)
+        self.vehicle_type = "Semitruck"
         self.images = images
         self.set_image_by_direction(graph[start_node]["direction"])
 
@@ -285,70 +297,289 @@ def spawn_vehicles_thread(
     vehicles_static, vehicles_ml, lock,
     entry_static, entry_ml,
     graph_static, graph_ml,
-    cars_img, trucks_img, motos_img, schoolbus_img, policecar_img, semi_img, ambul_img, bulldoz_img,
+    cars_img, trucks_img, motos_img, schoolbus_img, policecar_img, bulldoz_img, ambulance_img, semi_img,
     lights_state_static, lights_state_ml,
+    tier1_info, tier2_info, tier3_info
 ):
     global simulation_running
 
+    # Extract Tier 1 spawn rates
+    spawn_min = tier1_info["spawn_min"]
+    spawn_max = tier1_info["spawn_max"]
+
+    # Prepare Tier 2 distribution
+    vehicle_types = list(tier2_info["probabilities"].keys())
+    weights = list(tier2_info["probabilities"].values())
+
+    # Tier 3 speeds
+    tier3_speeds = tier3_info["speeds"]
+
     while simulation_running:
-        time.sleep(random.uniform(0.5, 1.5))
-        if simulation_running:
-            # --- 1) Choose entries
-            entry_s = select_random_entry(entry_static)
-            entry_m = select_random_entry(entry_ml)
-            if entry_s and entry_m:
-                vehicle_type_s = random.choice(["car", "truck", "motorcycle", "schoolbus", "policecar","bulldozer","ambulance","semitruck",])
-                vehicle_type_m = random.choice(["car", "truck", "motorcycle", "schoolbus", "policecar","bulldozer","ambulance","semitruck",])
+        # Tier 1 controls how often we spawn
+        time.sleep(random.uniform(spawn_min, spawn_max))
+        if not simulation_running:
+            break
 
-                with lock:
-                    if vehicle_type_s == "car":
-                        new_vehicle_s = Car(cars_img, graph_static, entry_s, side="static", light_state=lights_state_static)
-                    elif vehicle_type_s == "truck":
-                        new_vehicle_s = Truck(trucks_img, graph_static, entry_s, side="static", light_state=lights_state_static)
-                    elif vehicle_type_s == "motorcycle":
-                        new_vehicle_s = Motorcycle(motos_img, graph_static, entry_s, side="static", light_state=lights_state_static)
-                    elif vehicle_type_s == "schoolbus":
-                        new_vehicle_s = Schoolbus(schoolbus_img, graph_static, entry_s, side="static", light_state=lights_state_static)
-                    elif vehicle_type_s == "bulldozer":
-                        new_vehicle_s = Bulldozer(bulldoz_img, graph_static, entry_s, side="static", light_state=lights_state_static)
-                    elif vehicle_type_s == "ambulance":
-                        new_vehicle_s = Ambulance(ambul_img, graph_static, entry_s, side="static", light_state=lights_state_static)
-                    elif vehicle_type_s == "semitruck":
-                        new_vehicle_s = Semitruck(semi_img, graph_static, entry_s, side="static", light_state=lights_state_static)
-                    else:
-                        new_vehicle_s = Policecar(policecar_img, graph_static, entry_s, side="static", light_state=lights_state_static)
+        entry_s = select_random_entry(entry_static)
+        entry_m = select_random_entry(entry_ml)
+        if not entry_s or not entry_m:
+            continue
 
+        # Weighted random choice for each side (Tier 2)
+        vehicle_type_s = random.choices(vehicle_types, weights=weights, k=1)[0]
+        vehicle_type_m = random.choices(vehicle_types, weights=weights, k=1)[0]
 
-                    if vehicle_type_m == "car":
-                        new_vehicle_m = Car(cars_img, graph_ml, entry_m, side="ml", light_state=lights_state_ml)
-                    elif vehicle_type_m == "truck":
-                        new_vehicle_m = Truck(trucks_img, graph_ml, entry_m, side="ml", light_state=lights_state_ml)
-                    elif vehicle_type_m == "motorcycle":
-                        new_vehicle_m = Motorcycle(motos_img, graph_ml, entry_m, side="ml", light_state=lights_state_ml)
-                    elif vehicle_type_m == "schoolbus":
-                        new_vehicle_m = Schoolbus(schoolbus_img, graph_ml, entry_m, side="ml", light_state=lights_state_ml)
-                    elif vehicle_type_m == "bulldozer":
-                        new_vehicle_m = Bulldozer(bulldoz_img, graph_ml, entry_m, side="ml", light_state=lights_state_ml)
-                    elif vehicle_type_m == "ambulance":
-                        new_vehicle_m = Ambulance(ambul_img, graph_ml, entry_m, side="ml", light_state=lights_state_ml)
-                    elif vehicle_type_m == "semitruck":
-                        new_vehicle_m = Semitruck(semi_img, graph_ml, entry_m, side="ml", light_state=lights_state_ml)
-                    else:
-                        new_vehicle_m = Policecar(policecar_img, graph_ml, entry_m, side="ml", light_state=lights_state_ml)
+        # Tier 3 speeds for each type
+        speed_s = tier3_speeds.get(vehicle_type_s, 1.0)
+        speed_m = tier3_speeds.get(vehicle_type_m, 1.0)
+        with lock:
+            # Create vehicle for the static side
+            if vehicle_type_s == "car":
+                new_vehicle_s = Car(cars_img, graph_static, entry_s, side="static", speed=speed_s, light_state=lights_state_static)
+            elif vehicle_type_s == "truck":
+                new_vehicle_s = Truck(trucks_img, graph_static, entry_s, side="static", speed=speed_s, light_state=lights_state_static)
+            elif vehicle_type_s == "motorcycle":
+                new_vehicle_s = Motorcycle(motos_img, graph_static, entry_s, side="static", speed=speed_s, light_state=lights_state_static)
+            elif vehicle_type_s == "schoolbus":
+                new_vehicle_s = Schoolbus(schoolbus_img, graph_static, entry_s, side="static", speed=speed_s, light_state=lights_state_static)
+            elif vehicle_type_s == "bulldozer":
+                new_vehicle_s = Bulldozer(bulldoz_img, graph_static, entry_s, side="static", speed=speed_s, light_state=lights_state_static)
+            elif vehicle_type_s == "ambulance":
+                new_vehicle_s = Ambulance(ambulance_img, graph_static, entry_s, side="static", speed=speed_s, light_state=lights_state_static)
+            elif vehicle_type_s == "semitruck":
+                new_vehicle_s = Semitruck(semi_img, graph_static, entry_s, side="static", speed=speed_s, light_state=lights_state_static)
+            else:
+                # default to police car
+                new_vehicle_s = Policecar(policecar_img, graph_static, entry_s, side="static", speed=speed_s, light_state=lights_state_static)
 
-                    vehicles_static.append(new_vehicle_s)
-                    vehicles_ml.append(new_vehicle_m)
+            # Create vehicle for the ML side
+            if vehicle_type_m == "car":
+                new_vehicle_m = Car(cars_img, graph_ml, entry_m, side="ml", speed=speed_m, light_state=lights_state_ml)
+            elif vehicle_type_m == "truck":
+                new_vehicle_m = Truck(trucks_img, graph_ml, entry_m, side="ml", speed=speed_m, light_state=lights_state_ml)
+            elif vehicle_type_m == "motorcycle":
+                new_vehicle_m = Motorcycle(motos_img, graph_ml, entry_m, side="ml", speed=speed_m, light_state=lights_state_ml)
+            elif vehicle_type_m == "schoolbus":
+                new_vehicle_m = Schoolbus(schoolbus_img, graph_ml, entry_m, side="ml", speed=speed_m, light_state=lights_state_ml)
+            elif vehicle_type_m == "bulldozer":
+                new_vehicle_m = Bulldozer(bulldoz_img, graph_ml, entry_m, side="ml", speed=speed_m, light_state=lights_state_ml)
+            elif vehicle_type_m == "ambulance":
+                new_vehicle_m = Ambulance(ambulance_img, graph_ml, entry_m, side="ml", speed=speed_m, light_state=lights_state_ml)
+            elif vehicle_type_m == "semitruck":
+                new_vehicle_m = Semitruck(semi_img, graph_ml, entry_m, side="ml", speed=speed_m, light_state=lights_state_ml)
+            else:
+                new_vehicle_m = Policecar(policecar_img, graph_ml, entry_m, side="ml", speed=speed_m, light_state=lights_state_ml)
+
+            vehicles_static.append(new_vehicle_s)
+            vehicles_ml.append(new_vehicle_m)
 ######################################################################################################################
+def pick_traffic_conditions():
+    """
+    Returns a tuple:
+      ( tier1_info, tier2_info, tier3_info )
+
+    Each of these is a dict containing:
+      - Tier 1 => spawn_min, spawn_max, image_path, etc.
+      - Tier 2 => event_image_path, vehicle_probabilities, etc.
+      - Tier 3 => weather_image_path, speed overrides, etc.
+    Adjust the dictionaries and images to match your actual table.
+    """
+    # Tier 1: Time of Day => Vehicle Spawn rate
+    tier1_options = {
+        "Morning": {
+            "image_path": "images\Traffic_Conditions_images\Tier1_trafficConditions_Morning.png",
+            "spawn_min": 0.5,
+            "spawn_max": 1.0
+        },
+        "Afternoon": {
+            "image_path": "images\Traffic_Conditions_images\Tier1_trafficConditions_Afternoon.png",
+            "spawn_min": 0.75,
+            "spawn_max": 1.2
+        },
+        "Evening": {
+            "image_path": "images\Traffic_Conditions_images\Tier1_trafficConditions_Evening.png",
+            "spawn_min": 1.0,
+            "spawn_max": 1.5
+        },
+        "Night": {
+            "image_path": "images\Traffic_Conditions_images\Tier1_trafficConditions_Night.png",
+            "spawn_min": 1.2,
+            "spawn_max": 2.0
+        }
+    }
+    chosen_tier1 = random.choice(list(tier1_options.keys()))
+    tier1_info = tier1_options[chosen_tier1]
+
+    # Tier 2: Influential Event => Weighted probabilitiy for vehicle type generated
+    tier2_events = {
+        "Construction Zone": {
+            "image_path": "images\Traffic_Conditions_images\Tier2_trafficConditions_ConstructionZone.png",
+            "probabilities": {
+                "car": 0.05,
+                "truck": 0.05,
+                "motorcycle": 0.05,
+                "schoolbus": 0.05,
+                "policecar": 0.05,
+                "bulldozer": 0.45,
+                "ambulance": 0.1,
+                "semitruck": 0.2
+            }
+        },
+
+        "Active Emergency Situation": {
+            "image_path": "images\Traffic_Conditions_images\Tier2_trafficConditions_ActiveEmergencySituation.png",
+            "probabilities": {
+                "car": 0.075,
+                "truck": 0.075,
+                "motorcycle": 0.075,
+                "schoolbus": 0.05,
+                "policecar": 0.3,
+                "bulldozer": 0.075,
+                "ambulance": 0.3,
+                "semitruck": 0.05
+            }
+        },
+
+        "National Holiday": {
+            "image_path": "images\Traffic_Conditions_images\Tier2_trafficConditions_NationalHoliday.png",
+            "probabilities": {
+                "car": 0.1,
+                "truck": 0.06,
+                "motorcycle": 0.06,
+                "schoolbus": 0.06,
+                "policecar": 0.1,
+                "bulldozer": 0.06,
+                "ambulance": 0.06,
+                "semitruck": 0.5
+            }
+        },
+
+        "School Commute Hours": {
+            "image_path": "images\Traffic_Conditions_images\Tier2_trafficConditions_SchoolCommuteHours.png",
+            "probabilities": {
+                "car": 0.2,
+                "truck": 0.1,
+                "motorcycle": 0.075,
+                "schoolbus": 0.4,
+                "policecar": 0.08,
+                "bulldozer": 0.04,
+                "ambulance": 0.075,
+                "semitruck": 0.03
+            }
+        },
+
+        "Work Rush Hours": {
+            "image_path": "images\Traffic_Conditions_images\Tier2_trafficConditions_WorkRushHours.png",
+            "probabilities": {
+                "car": 0.25,
+                "truck": 0.25,
+                "motorcycle": 0.25,
+                "schoolbus": 0.05,
+                "policecar": 0.05,
+                "bulldozer": 0.05,
+                "ambulance": 0.05,
+                "semitruck": 0.05
+            }
+        },
+    }
+    chosen_tier2 = random.choice(list(tier2_events.keys()))
+    tier2_info = tier2_events[chosen_tier2]
+
+    # Tier 3: Weather => Vehicle Speed override
+    tier3_conditions = {
+        "SnowStorm": {
+            "image_path": "images\Traffic_Conditions_images\Tier3_trafficConditions_Snowstorm.png",
+            "speeds": {
+                "car": 1.0,
+                "truck": 0.7,
+                "motorcycle": 1.25,
+                "schoolbus": 0.8,
+                "policecar": 1,
+                "bulldozer": 0.5,
+                "ambulance": 1,
+                "semitruck": 0.6
+            }
+        },
+
+        "ClearSkies": {
+            "image_path": "images\Traffic_Conditions_images\Tier3_trafficConditions_ClearSkies.png",
+            "speeds": {
+                "car": 1.5,
+                "truck": 1,
+                "motorcycle": 1.75,
+                "schoolbus": 1,
+                "policecar": 1.5,
+                "bulldozer": 0.8,
+                "ambulance": 1.25,
+                "semitruck": 0.75
+            }
+        },
+
+        "ExtremeHeat": {
+            "image_path": "images\Traffic_Conditions_images\Tier3_trafficConditions_ExtremeHeat.png",
+            "speeds": {
+                "car": 2.0,
+                "truck": 2.8,
+                "motorcycle": 2.8,
+                "schoolbus": 1.7,
+                "policecar": 2.0,
+                "bulldozer": 1.5,
+                "ambulance": 2.9,
+                "semitruck": 1.7
+            }
+        },
+
+        "ModerateWindGusts": {
+            "image_path": "images\Traffic_Conditions_images\Tier3_trafficConditions_ModerateWindGusts.png",
+            "speeds": {
+                "car": 1.65,
+                "truck": 1.15,
+                "motorcycle": 2,
+                "schoolbus": 1.15,
+                "policecar": 1.65,
+                "bulldozer": 1,
+                "ambulance": 1.5,
+                "semitruck": 0.9
+            }
+        },
+
+        "Thunderstorm": {
+            "image_path": "images\Traffic_Conditions_images\Tier3_trafficConditions_Thunderstorm.png",
+            "speeds": {
+                "car": 0.85,
+                "truck": 0.65,
+                "motorcycle": 1,
+                "schoolbus": 0.7,
+                "policecar": 0.8,
+                "bulldozer": 0.5,
+                "ambulance": 0.7,
+                "semitruck": 0.4
+            }
+        },
+    }
+    chosen_tier3 = random.choice(list(tier3_conditions.keys()))
+    tier3_info = tier3_conditions[chosen_tier3]
+
+    return tier1_info, tier2_info, tier3_info
+
+########################################################################################################################################################
 def main():
     global simulation_running
     pygame.init()
+
+    #This is the file that the ml model will read to be able to adapt to the current traffic conditions and flow
+    if not os.path.exists("reinforcement_data.txt"):
+        with open("reinforcement_data.txt", "w") as f:
+            f.write("vehicle_type,elapsed_time_s,num_nodes_passed,speed\n")
+
+
 
     # Load both graphs
     graph_static, entry_static, exit_static = load_graph_from_csv("Directed_Graph - Static.csv")
     graph_ml, entry_ml, exit_ml = load_graph_from_csv("Directed_Graph - Machine_Learning.csv")
 
     # Create a window
-    screen = pygame.display.set_mode((1300, 1000))
+    screen = pygame.display.set_mode((1656, 1016))
     pygame.display.set_caption("Traffic Simulation: Static vs. Machine Learning Controlled Traffic Signals")
 
     # Load background
@@ -431,6 +662,20 @@ def main():
     lights_state_static = {tl.node_name: tl for tl in static_traffic_lights}
     lights_state_ml = {tl.node_name: tl for tl in ml_traffic_lights}
 
+    tier1_info, tier2_info, tier3_info = pick_traffic_conditions()
+    tier1_image = pygame.image.load(tier1_info["image_path"]).convert_alpha()
+    tier1_rect = tier1_image.get_rect()
+    tier1_x = (bg_width - tier1_rect.width) // 2
+    tier1_y = 409 
+    tier2_image = pygame.image.load(tier2_info["image_path"]).convert_alpha()
+    tier2_rect = tier2_image.get_rect()
+    tier2_x = (bg_width - tier2_rect.width) // 2
+    tier2_y = 475
+    tier3_image = pygame.image.load(tier3_info["image_path"]).convert_alpha()
+    tier3_rect = tier3_image.get_rect()
+    tier3_x = (bg_width - tier3_rect.width) // 2
+    tier3_y = 550
+
     clock = pygame.time.Clock()
     vehicles_static = []
     vehicles_ml = []
@@ -446,6 +691,7 @@ def main():
             car_images, truck_images, motorcycle_images, schoolbus_images, policecar_images, bulldozer_images, ambulance_images, semitruck_images,
             lights_state_static,
             lights_state_ml,
+            tier1_info, tier2_info, tier3_info
         ),
         daemon=True
     )
@@ -479,10 +725,17 @@ def main():
                     elapsed = time.time() - v.spawn_time
                     with open("ml_result_metrics.txt", "a") as f:
                         f.write(f"{elapsed:.3f}\n")
+
+                    if v.side == "ml":
+                        with open("reinforcement_data.txt", "a") as rf:
+                            rf.write(f"{v.vehicle_type},{elapsed:.3f},{v.num_nodes_passed},{v.base_speed}\n")
                     vehicles_ml.remove(v)
 
         # Render
         screen.blit(background_img, (0, 0))
+        screen.blit(tier1_image, (tier1_x, tier1_y))
+        screen.blit(tier2_image, (tier2_x, tier2_y))
+        screen.blit(tier3_image, (tier3_x, tier3_y))
         
         # Update and draw static side traffic lights.
         for tl in static_traffic_lights:
