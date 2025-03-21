@@ -66,63 +66,227 @@ def is_node_occupied(node_name, all_vehicles, this_vehicle):# This function chec
 ############################################################################################################
 
 class TrafficLight:
-    def __init__(self, node_name, x, y, orientation, images):
-        """
-        :param node_name: the identifier from your CSV (e.g., "V1.9")
-        :param x, y: coordinates for this node
-        :param orientation: either "horizontal" or "vertical"
-        :param images: a dict of images for that orientation with keys "red", "yellow", "green"
-        """
+    def __init__(self, node_name, x, y, orientation, images, is_turning_lane=False):
         self.node_name = node_name
         self.x = x
         self.y = y
         self.orientation = orientation  # "horizontal" or "vertical"
-        self.images = images
-        self.state = "red"  # initial state
-        self.cycle_period = 12.0  # total cycle time in seconds
+        self.images = images           # expects dict: {"red", "yellow", "green"}
+        self.state = "red"
+        self.cycle_period = 12.0
+        self.is_turning_lane = is_turning_lane
 
     def update(self):
-        # Use the current time mod cycle_period for a synchronized cycle.
         t = time.time() % self.cycle_period
+
         if self.orientation == "horizontal":
-            # Horizontal cycle: green (0-5 sec), yellow (5-7 sec), red (7-12 sec)
-            if t < 5:
-                self.state = "green"
-            elif t < 7:
-                self.state = "yellow"
+            if self.is_turning_lane:
+                # Example: turning lane gets green from 0–2s, then red.
+                if t < 2:
+                    self.state = "green"
+                else:
+                    self.state = "red"
             else:
-                self.state = "red"
+                # Straight lane: red for first 2s, then green until 5s, yellow until 7s, red rest.
+                if t < 2:
+                    self.state = "red"
+                elif t < 5:
+                    self.state = "green"
+                elif t < 7:
+                    self.state = "yellow"
+                else:
+                    self.state = "red"
         else:  # vertical
-            # Vertical cycle: red (0-7 sec), green (7-10 sec), yellow (10-12 sec)
-            if t < 7:
-                self.state = "red"
-            elif t < 10:
-                self.state = "green"
+            # Offset the vertical cycle so it starts green later in the 12s window.
+            if self.is_turning_lane:
+                # Red until 7s, green 7–9s, then red.
+                if t < 7:
+                    self.state = "red"
+                elif t < 9:
+                    self.state = "green"
+                else:
+                    self.state = "red"
             else:
-                self.state = "yellow"
+                # Red until 9s, green 9–11s, yellow 11–12s, then red again.
+                if t < 9:
+                    self.state = "red"
+                elif t < 11:
+                    self.state = "green"
+                elif t < 12:
+                    self.state = "yellow"
+                else:
+                    self.state = "red"
 
     def draw(self, screen):
-        # Draw the image centered at the node's (x, y)
-        img = self.images[self.state]
-        rect = img.get_rect(center=(self.x, self.y))
-        screen.blit(img, rect)
+        img = self.images.get(self.state)
+        if img:
+            rect = img.get_rect(center=(self.x, self.y))
+            screen.blit(img, rect)
+
+
+# Hard-code which nodes are turning lanes:
+TURNING_LANE_NODES = {
+    "V.2.9", "V.2.16", "V.3.10", "V.3.17", "V.6.9", "V.6.16", "V.7.10", "V.7.17", "H.2.8", "H.2.13", "H.3.7", "H.3.12", "H.6.8", "H.6.13", "H.7.7", "H.7.12",
+     "Y.2.9", "Y.2.16", "Y.3.10", "Y.3.17", "Y.6.9", "Y.6.16", "Y.7.10", "Y.7.17", "X.2.8", "X.2.13", "X.3.7", "X.3.12", "X.6.8", "X.6.13", "X.7.7", "X.7.12",
+    }  # Add as many as you need
+
 
 def create_traffic_lights(graph, horizontal_images, vertical_images):
     traffic_lights = []
     for node_name, node_data in graph.items():
         if node_data["node_type"].lower() == "traffic_controller":
             direction = node_data["direction"]
-            # Determine orientation based on the direction.
-            # Assume "eastside" and "westside" are horizontal, others vertical.
-            if direction in ("eastside", "westside"):
-                orientation = "horizontal"
-                images = horizontal_images
-            else:
-                orientation = "vertical"
-                images = vertical_images
-            tl = TrafficLight(node_name, node_data["x"], node_data["y"], orientation, images)
+            orientation = "horizontal" if direction in ("eastside", "westside") else "vertical"
+            images = horizontal_images if orientation == "horizontal" else vertical_images
+
+            # Check if this node is in our hard-coded turning-lane set
+            is_turning_lane = node_name in TURNING_LANE_NODES
+
+            tl = TrafficLight(
+                node_name=node_name,
+                x=node_data["x"],
+                y=node_data["y"],
+                orientation=orientation,
+                images=images,
+                is_turning_lane=is_turning_lane
+            )
             traffic_lights.append(tl)
     return traffic_lights
+
+
+class WeatherEffect:
+    """Base class for all weather effects."""
+    def update(self, dt):
+        """Update internal state (particles, animations, etc.)"""
+        pass
+
+    def draw(self, screen):
+        """Render the effect on the given screen."""
+        pass
+
+
+class SnowstormEffect(WeatherEffect):
+    def __init__(self, screen_width, screen_height, num_flakes=100):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+
+        # Each flake: [x, y, speed, radius]
+        self.flakes = []
+        for _ in range(num_flakes):
+            x = random.randint(0, screen_width)
+            y = random.randint(0, screen_height)
+            speed = random.uniform(0.5, 1.5)  # slow downward speed
+            radius = random.randint(2, 4)     # flake size
+            self.flakes.append([x, y, speed, radius])
+
+    def update(self, dt):
+        # Move flakes downward
+        for flake in self.flakes:
+            flake[1] += flake[2]  # y += speed
+            # If off screen, respawn above top
+            if flake[1] > self.screen_height:
+                flake[0] = random.randint(0, self.screen_width)
+                flake[1] = random.randint(-50, -10)
+
+    def draw(self, screen):
+        # Draw each flake as a small white circle
+        color = (255, 255, 255)
+        for (x, y, speed, radius) in self.flakes:
+            pygame.draw.circle(screen, color, (int(x), int(y)), radius)
+
+
+class ThunderstormEffect(WeatherEffect):
+    def __init__(self, screen_width, screen_height, num_drops=150):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+
+        # Each drop: [x, y, speed, length]
+        self.drops = []
+        for _ in range(num_drops):
+            x = random.randint(0, screen_width)
+            y = random.randint(0, screen_height)
+            speed = random.uniform(4, 8)     # downward speed
+            length = random.uniform(10, 20)  # drop length
+            self.drops.append([x, y, speed, length])
+
+    def update(self, dt):
+        for drop in self.drops:
+            drop[1] += drop[2]  # move down
+            # Reset to top if off screen
+            if drop[1] > self.screen_height:
+                drop[0] = random.randint(0, self.screen_width)
+                drop[1] = random.randint(-50, -10)
+
+    def draw(self, screen):
+        color = (150, 150, 255)  # bluish color for rain
+        for (x, y, speed, length) in self.drops:
+            end_y = y + length
+            pygame.draw.line(screen, color, (x, y), (x, end_y), width=1)
+
+
+class ExtremeHeatEffect(WeatherEffect):
+    def __init__(self, screen_width, screen_height):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+
+        # Create a semi-transparent surface for the "sun glare"
+        self.overlay = pygame.Surface((screen_width, screen_height // 2), pygame.SRCALPHA)
+        # Fill with bright yellow or orange
+        # RGBA => (255, 255, 0, 128) means alpha=128 => 50% transparent
+        self.overlay.fill((255, 255, 0, 128))
+
+    def update(self, dt):
+        # For a simple overlay, no update logic needed.
+        # Could animate or shift overlay if desired.
+        pass
+
+    def draw(self, screen):
+        # Blit the overlay at the top
+        screen.blit(self.overlay, (0, 0))
+
+
+class ModerateWindEffect(WeatherEffect):
+    def __init__(self, screen_width, screen_height, num_particles=100):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+
+        # Each particle: [x, y, speed, size]
+        self.particles = []
+        for _ in range(num_particles):
+            x = random.randint(0, screen_width)
+            y = random.randint(0, screen_height)
+            speed = random.uniform(1.0, 3.0)  # horizontal speed
+            size = random.randint(2, 4)      # small dust
+            self.particles.append([x, y, speed, size])
+
+    def update(self, dt):
+        for p in self.particles:
+            p[0] += p[2]  # move right
+            # Reset if off the right edge
+            if p[0] > self.screen_width:
+                p[0] = random.randint(-50, -10)
+                p[1] = random.randint(0, self.screen_height)
+
+    def draw(self, screen):
+        color = (200, 200, 200)  # light gray dust
+        for (x, y, speed, size) in self.particles:
+            pygame.draw.circle(screen, color, (int(x), int(y)), size)
+
+
+def create_weather_effect(tier3_info, screen_width, screen_height):
+    path = tier3_info["image_path"]  # e.g., "images/Traffic_Conditions_images/Tier3_trafficConditions_Thunderstorm.png"
+
+    if "Snowstorm" in path:
+        return SnowstormEffect(screen_width, screen_height, num_flakes=150)
+    elif "Thunderstorm" in path:
+        return ThunderstormEffect(screen_width, screen_height, num_drops=150)
+    elif "ExtremeHeat" in path:
+        return ExtremeHeatEffect(screen_width, screen_height)
+    elif "ModerateWindGusts" in path:
+        return ModerateWindEffect(screen_width, screen_height, num_particles=100)
+    else:
+        return None
+
 
 
 class BaseVehicle:
@@ -697,6 +861,8 @@ def main():
     )
     spawner_thread.start()
 
+    weather_effect = create_weather_effect(tier3_info, bg_width, bg_height)
+
     running = True
     while running:
         dt = clock.tick(120)
@@ -737,6 +903,10 @@ def main():
         screen.blit(tier2_image, (tier2_x, tier2_y))
         screen.blit(tier3_image, (tier3_x, tier3_y))
         
+        if weather_effect:
+            weather_effect.update(dt)
+            weather_effect.draw(screen)
+
         # Update and draw static side traffic lights.
         for tl in static_traffic_lights:
             tl.update()
