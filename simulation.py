@@ -5,6 +5,7 @@ import random
 import time
 import threading
 import os
+import math
 
 simulation_running = True
 ###################################################################################################
@@ -73,7 +74,7 @@ class TrafficLight:
         self.orientation = orientation  # "horizontal" or "vertical"
         self.images = images           # expects dict: {"red", "yellow", "green"}
         self.state = "red"
-        self.cycle_period = 12.0
+        self.cycle_period = 6
         self.is_turning_lane = is_turning_lane
 
     def update(self):
@@ -82,17 +83,17 @@ class TrafficLight:
         if self.orientation == "horizontal":
             if self.is_turning_lane:
                 # Example: turning lane gets green from 0–2s, then red.
-                if t < 2:
+                if t < 1:
                     self.state = "green"
                 else:
                     self.state = "red"
             else:
                 # Straight lane: red for first 2s, then green until 5s, yellow until 7s, red rest.
-                if t < 2:
+                if t < 1:
                     self.state = "red"
-                elif t < 5:
+                elif t < 3:
                     self.state = "green"
-                elif t < 7:
+                elif t < 4:
                     self.state = "yellow"
                 else:
                     self.state = "red"
@@ -100,19 +101,19 @@ class TrafficLight:
             # Offset the vertical cycle so it starts green later in the 12s window.
             if self.is_turning_lane:
                 # Red until 7s, green 7–9s, then red.
-                if t < 7:
+                if t < 3:
                     self.state = "red"
-                elif t < 9:
+                elif t < 4:
                     self.state = "green"
                 else:
                     self.state = "red"
             else:
                 # Red until 9s, green 9–11s, yellow 11–12s, then red again.
-                if t < 9:
+                if t < 4:
                     self.state = "red"
-                elif t < 11:
+                elif t < 5:
                     self.state = "green"
-                elif t < 12:
+                elif t < 6:
                     self.state = "yellow"
                 else:
                     self.state = "red"
@@ -230,10 +231,10 @@ class ExtremeHeatEffect(WeatherEffect):
         self.screen_height = screen_height
 
         # Create a semi-transparent surface for the "sun glare"
-        self.overlay = pygame.Surface((screen_width, screen_height // 2), pygame.SRCALPHA)
+        self.overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
         # Fill with bright yellow or orange
         # RGBA => (255, 255, 0, 128) means alpha=128 => 50% transparent
-        self.overlay.fill((255, 255, 0, 128))
+        self.overlay.fill((255, 255, 0, 64))
 
     def update(self, dt):
         # For a simple overlay, no update logic needed.
@@ -246,32 +247,52 @@ class ExtremeHeatEffect(WeatherEffect):
 
 
 class ModerateWindEffect(WeatherEffect):
-    def __init__(self, screen_width, screen_height, num_particles=100):
+    def __init__(self, screen_width, screen_height, num_lines=50):
+        """
+        :param screen_width: width of the window
+        :param screen_height: height of the window
+        :param num_lines: number of wind streaks to simulate
+        """
         self.screen_width = screen_width
         self.screen_height = screen_height
-
-        # Each particle: [x, y, speed, size]
-        self.particles = []
-        for _ in range(num_particles):
+        self.lines = []
+        for _ in range(num_lines):
+            # Starting x position anywhere on screen (or slightly off-screen)
             x = random.randint(0, screen_width)
+            # y position randomly across the height
             y = random.randint(0, screen_height)
-            speed = random.uniform(1.0, 3.0)  # horizontal speed
-            size = random.randint(2, 4)      # small dust
-            self.particles.append([x, y, speed, size])
+            # Length of the wind streak line
+            length = random.randint(30, 60)
+            # Horizontal speed of the line
+            speed = random.uniform(1.0, 3.0)
+            # Slight angle variation in radians (mostly horizontal)
+            angle = random.uniform(-0.1, 0.1)
+            self.lines.append([x, y, length, speed, angle])
 
     def update(self, dt):
-        for p in self.particles:
-            p[0] += p[2]  # move right
-            # Reset if off the right edge
-            if p[0] > self.screen_width:
-                p[0] = random.randint(-50, -10)
-                p[1] = random.randint(0, self.screen_height)
+        """
+        Update the position of each wind streak.
+        dt is the delta time (milliseconds or seconds based on your clock setup)
+        """
+        for line in self.lines:
+            # Increase x based on the speed
+            line[0] += line[3]
+            # If the line goes off the right side, reset it to the left
+            if line[0] > self.screen_width:
+                line[0] = random.randint(-50, -10)
+                line[1] = random.randint(0, self.screen_height)
 
     def draw(self, screen):
-        color = (200, 200, 200)  # light gray dust
-        for (x, y, speed, size) in self.particles:
-            pygame.draw.circle(screen, color, (int(x), int(y)), size)
-
+        """
+        Draw each wind streak as a line.
+        """
+        color = (200, 200, 200)  # light gray color for wind streaks
+        for line in self.lines:
+            x, y, length, speed, angle = line
+            # Compute end coordinates of the line based on the angle and length.
+            end_x = x + length * math.cos(angle)
+            end_y = y + length * math.sin(angle)
+            pygame.draw.line(screen, color, (int(x), int(y)), (int(end_x), int(end_y)), width=2)
 
 def create_weather_effect(tier3_info, screen_width, screen_height):
     path = tier3_info["image_path"]  # e.g., "images/Traffic_Conditions_images/Tier3_trafficConditions_Thunderstorm.png"
@@ -283,7 +304,7 @@ def create_weather_effect(tier3_info, screen_width, screen_height):
     elif "ExtremeHeat" in path:
         return ExtremeHeatEffect(screen_width, screen_height)
     elif "ModerateWindGusts" in path:
-        return ModerateWindEffect(screen_width, screen_height, num_particles=100)
+        return ModerateWindEffect(screen_width, screen_height)
     else:
         return None
 
