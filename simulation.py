@@ -74,7 +74,7 @@ class TrafficLight:
         self.orientation = orientation  # "horizontal" or "vertical"
         self.images = images           # expects dict: {"red", "yellow", "green"}
         self.state = "red"
-        self.cycle_period = 6
+        self.cycle_period = 8
         self.is_turning_lane = is_turning_lane
 
     def update(self):
@@ -91,9 +91,9 @@ class TrafficLight:
                 # Straight lane: red for first 2s, then green until 5s, yellow until 7s, red rest.
                 if t < 1:
                     self.state = "red"
-                elif t < 3:
+                elif t < 5:
                     self.state = "green"
-                elif t < 4:
+                elif t < 6:
                     self.state = "yellow"
                 else:
                     self.state = "red"
@@ -101,19 +101,19 @@ class TrafficLight:
             # Offset the vertical cycle so it starts green later in the 12s window.
             if self.is_turning_lane:
                 # Red until 7s, green 7–9s, then red.
-                if t < 3:
+                if t < 5:
                     self.state = "red"
-                elif t < 4:
+                elif t < 6:
                     self.state = "green"
                 else:
                     self.state = "red"
             else:
                 # Red until 9s, green 9–11s, yellow 11–12s, then red again.
-                if t < 4:
+                if t < 6:
                     self.state = "red"
-                elif t < 5:
+                elif t < 7:
                     self.state = "green"
-                elif t < 6:
+                elif t < 8:
                     self.state = "yellow"
                 else:
                     self.state = "red"
