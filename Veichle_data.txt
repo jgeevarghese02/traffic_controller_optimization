@@ -1,0 +1,1 @@
+vehicle_type,elapsed_time_s,num_nodes_passed,speed
