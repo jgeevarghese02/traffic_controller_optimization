@@ -20,29 +20,33 @@ def load_graph_from_csv(csv_filename):#This function get the directed graph from
             header = next(reader, None)
 
             for row in reader:
-                if len(row) < 8:#Should only be a max of 8 fields of info for each node 
+                if len(row) < 10:#Should only be a max of 8 fields of info for each node 
                     continue
                 node_name = row[1].strip()
                 node_type = row[2].strip().lower()
-                vehicle_direction = row[3].strip().lower()
-                node_x = float(row[4])
-                node_y = float(row[5])
+                pair_type = row[3].strip().lower()
+                cam_type = row[4].strip()
+                vehicle_direction = row[5].strip().lower()
+                node_x = float(row[6])
+                node_y = float(row[7])
 
                 neighbors = []
-                if row[6].strip():
-                    neighbors.append(row[6].strip())
-                if row[7].strip():
-                    neighbors.append(row[7].strip())
-
+                if row[8].strip():
+                    neighbors.append(row[8].strip())
+                if row[9].strip():
+                    neighbors.append(row[9].strip())
+            
                 graph[node_name] = {
                     "x": node_x,
                     "y": node_y,
                     "neighbors": neighbors,
                     "direction": vehicle_direction,
-                    "node_type": node_type
+                    "node_type": node_type,
+                    "pair_type": pair_type,
+                    "cam_type": cam_type,
                 }
 
-                if node_type == "entry":
+                if node_type.lower() == "entry":
                     entry_nodes.append(node_name)
                 elif node_type == "exit":
                     exit_nodes.append(node_name)
@@ -50,6 +54,8 @@ def load_graph_from_csv(csv_filename):#This function get the directed graph from
     
     except Exception as e:
         print(f"Error loading CSV {csv_filename}: {e}")
+        print(f"Graph loaded with {len(graph)} nodes: {list(graph.keys())[:5]}...")
+
     
     return graph, entry_nodes, exit_nodes,
 #########################################################################################################
@@ -57,7 +63,7 @@ def load_graph_from_csv(csv_filename):#This function get the directed graph from
 
 # Add this to simulation.py
 
-def run_simulation_with_custom_timings(timing_vector,traffic_lights):
+#def run_simulation_with_custom_timings(timing_vector,traffic_lights):
     import time
     import random
     import pygame
@@ -129,7 +135,7 @@ def is_node_occupied(node_name, all_vehicles, this_vehicle):# This function chec
 ############################################################################################################
 
 class TrafficLight:
-    def __init__(self, node_name, x, y, orientation, images, is_turning_lane=False):
+    def __init__(self, node_name, x, y, orientation, images, pair_type, cam_type,is_turning_lane=False):
         self.node_name = node_name
         self.x = x
         self.y = y
@@ -139,6 +145,8 @@ class TrafficLight:
         self.cycle_period = 8
         self.is_turning_lane = is_turning_lane
         self.vehicle_count = 0
+        self.pair_type
+        self.cam_type
 
     def update(self):
         t = time.time() % self.cycle_period
@@ -173,7 +181,7 @@ class TrafficLight:
 
 def create_traffic_lights(graph, horizontal_images, vertical_images):
     traffic_lights = []
-    for node_name, node_data in graph.items():
+    for node_name, node_data, pair_type, cam_type in graph.items():
         
         if node_data["node_type"].lower() in ("traffic_controller", "turning_lanes"):
             node_type = node_data["node_type"].lower()
@@ -196,6 +204,7 @@ def create_traffic_lights(graph, horizontal_images, vertical_images):
                 orientation=orientation,
                 images=images,
                 is_turning_lane=is_turning_lane
+
             )
         
             traffic_lights.append(tl)
@@ -1032,14 +1041,14 @@ def main():
 
     with open("camera_snapshot.txt", "w") as f:
         f.write("node_name,vehicle_count\n")
-        for light in list(lights_state_ml.values()) + list(lights_state_static.values()):
+        for light in list(lights_state_ml.values()):
             f.write(f"{light.node_name},{light.vehicle_count}\n")
     
     # Initialize vector of 0s, length = number of cameras
     camera_counts = [0] * len(camera_indices)
 
     # Fill with counts from ML and static lights
-    for light_dict in (lights_state_ml, lights_state_static):
+    for light_dict in (lights_state_ml):
         for node_name, light in light_dict.items():
             idx = camera_indices[node_name]
             camera_counts[idx] += light.vehicle_count  # Add to total (in case both sides exist)

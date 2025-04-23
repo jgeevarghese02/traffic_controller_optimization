@@ -19,6 +19,8 @@ def visualize_directed_graph(csv_file):
         G.add_node(
             node_name, 
             node_type=row["Node Type"],
+            pair_type=row["Pair Type"],
+            cam_type=row["Cam Type"],
             vehicle_direction=row["vehicle direction"],
             x=x_coord,
             y=y_coord
