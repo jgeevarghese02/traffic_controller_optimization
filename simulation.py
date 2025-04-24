@@ -6,6 +6,7 @@ import time
 import threading
 import os
 import math
+from ml_predictor import get_latest_ml_timings
 
 simulation_running = True
 ###################################################################################################
@@ -76,9 +77,16 @@ class TrafficLight:
         self.state = "red"
         self.cycle_period = 8
         self.is_turning_lane = is_turning_lane
+<<<<<<< Updated upstream
+=======
+        self.vehicle_count = 0
+        self.custom_green = 3.0  # ✅ Add this line to avoid attribute errors
+>>>>>>> Stashed changes
 
     def update(self):
+        self.cycle_period = self.custom_green + 5  # 5s buffer for red/yellow
         t = time.time() % self.cycle_period
+<<<<<<< Updated upstream
 
         if self.orientation == "horizontal":
             if self.is_turning_lane:
@@ -107,6 +115,25 @@ class TrafficLight:
                     self.state = "green"
                 else:
                     self.state = "red"
+=======
+    
+        if self.is_turning_lane:
+            # Turning: green first (0–custom_green)
+            if t < self.custom_green:
+                self.state = "green"
+            elif t < self.custom_green + 0.5:
+                self.state = "yellow"
+            else:
+                self.state = "red"
+        else:
+            # Straight lanes: red first (0–2), then green
+            if t < 2.0:
+                self.state = "red"
+            elif t < 2.0 + self.custom_green:
+                self.state = "green"
+            elif t < 2.0 + self.custom_green + 0.5:
+                self.state = "yellow"
+>>>>>>> Stashed changes
             else:
                 # Red until 9s, green 9–11s, yellow 11–12s, then red again.
                 if t < 6:
@@ -747,7 +774,53 @@ def pick_traffic_conditions():
 
     return tier1_info, tier2_info, tier3_info
 
+<<<<<<< Updated upstream
 ########################################################################################################################################################
+=======
+####################################################################################################################
+
+def run_simulation_with_custom_timings(timings):
+    global simulation_running
+    global vehicle_counter
+    vehicle_counter = 0
+
+    # Reuse much of the logic from main(), but use given timings
+    graph_static, entry_static, exit_static = load_graph_from_csv("Directed_Graph - Static.csv")
+    graph_ml, entry_ml, exit_ml = load_graph_from_csv("Directed_Graph - Machine_Learning.csv")
+
+    static_traffic_lights = create_traffic_lights(graph_static, {}, {})
+    ml_traffic_lights = create_traffic_lights(graph_ml, {}, {})
+    print("🧮 Total ML lights:", len(ml_traffic_lights), flush=True) #debug print line
+
+    timing_iter = iter(timings)
+
+    for tl in ml_traffic_lights:
+        try:
+            tl.custom_green = next(timing_iter)
+        except StopIteration:
+            print("⚠️ Warning: Not enough timing values provided!")
+            tl.custom_green = 3.0  # or some default fallback
+
+
+    lights_state_ml = {tl.node_name: tl for tl in ml_traffic_lights}
+
+    # Collect vehicle counts just like in the main simulation
+    for _ in range(1000):  # run for 1000 frames as a stub
+        for tl in ml_traffic_lights:
+            tl.update()
+            # fake vehicle increments (simulate movement)
+            tl.vehicle_count += random.randint(0, 3)
+
+    # Return the predicted camera counts in order of cam_type
+    camera_nodes = sorted(
+        lights_state_ml.keys(),
+        key=lambda n: int(graph_ml[n]["cam_type"])
+    )
+    return [lights_state_ml[n].vehicle_count for n in camera_nodes]
+
+
+####################################################################################################################
+>>>>>>> Stashed changes
 def main():
     global simulation_running
     pygame.init()
@@ -756,8 +829,6 @@ def main():
     if not os.path.exists("reinforcement_data.txt"):
         with open("reinforcement_data.txt", "w") as f:
             f.write("vehicle_type,elapsed_time_s,num_nodes_passed,speed\n")
-
-
 
     # Load both graphs
     graph_static, entry_static, exit_static = load_graph_from_csv("Directed_Graph - Static.csv")
@@ -842,7 +913,32 @@ def main():
 
     # Create traffic lights for each graph.
     static_traffic_lights = create_traffic_lights(graph_static, horizontal_images, vertical_images)
+<<<<<<< Updated upstream
     ml_traffic_lights = create_traffic_lights(graph_ml, horizontal_images, vertical_images)
+=======
+
+    for tl in static_traffic_lights:
+        tl.custom_green = 1.5  # or 6.0+ if you want longer green cycles for testing
+
+
+    ml_traffic_lights = create_traffic_lights(graph_ml, horizontal_images, vertical_images,)
+   
+    light_timing_vector = get_latest_ml_timings()
+    print("🧠 ML Predicted Timing Vector:", light_timing_vector)
+
+    timing_iter = iter(light_timing_vector)
+    for tl in ml_traffic_lights:
+        try:
+            val = next(timing_iter)
+            if not isinstance(val, float) or val != val or val < 0.5:  # NaN or invalid
+                raise ValueError("Invalid green time")
+            tl.custom_green = val
+            print(f"Assigning ML light {tl.node_name} → green {val:.2f}s", flush=True)
+        except:
+            print(f"⚠️ Defaulting {tl.node_name} to 3.0s (invalid ML timing)", flush=True)
+            tl.custom_green = 3.0
+
+>>>>>>> Stashed changes
 
     lights_state_static = {tl.node_name: tl for tl in static_traffic_lights}
     lights_state_ml = {tl.node_name: tl for tl in ml_traffic_lights}
@@ -886,7 +982,11 @@ def main():
 
     running = True
     while running:
+<<<<<<< Updated upstream
         dt = clock.tick(120)
+=======
+        dt = clock.tick(60)
+>>>>>>> Stashed changes
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
