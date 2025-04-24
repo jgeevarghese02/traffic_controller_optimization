@@ -26,13 +26,42 @@ with torch.no_grad():
     input_tensor = torch.tensor(camera_vector_scaled, dtype=torch.float32)
     timing_vector = model(input_tensor).numpy().flatten()
 
+timing_vector = model(input_tensor).detach().numpy().flatten()
+timing_vector = timing_vector.tolist()  # ✅ Convert from ndarray to list
+
 print("Predicted Timing Vector (16D):")
 print(np.round(timing_vector, 2))
+
 
 # OPTIONAL: Run the simulation using this timing vector
 # Note: You'll need to implement run_simulation_with_custom_timings(timings: list[float])
 # inside your simulation.py if not already
 #
-# result = run_simulation_with_custom_timings(timing_vector)
-# print("Simulation Result:", result)
+#result = run_simulation_with_custom_timings(timing_vector)
+#print("Simulation Result:", result)
 
+#def get_latest_ml_timings():
+
+    import torch
+    import pandas as pd
+    from train_model import TimingNet
+    from sklearn.preprocessing import StandardScaler
+
+    # Load snapshot
+    data = pd.read_csv("camera_vector_snapshot.csv")
+    cam_vector = data["vehicle_count"].values[:32]
+    scaler = StandardScaler()
+    scaler.fit(pd.read_csv("ml_dataset.csv").iloc[:, 1:33])
+    cam_vector_scaled = scaler.transform([cam_vector])
+    print("Camera vector:", cam_vector)
+    print("Scaled vector:", cam_vector_scaled)
+
+    # Predict
+    model = TimingNet()
+    model.load_state_dict(torch.load("best_model.pt"))
+    model.eval()
+    with torch.no_grad():
+        input_tensor = torch.tensor(cam_vector_scaled, dtype=torch.float32)
+        output = model(input_tensor).numpy().flatten()
+
+    return output.tolist()

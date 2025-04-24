@@ -20,22 +20,23 @@ def load_graph_from_csv(csv_filename):#This function get the directed graph from
             header = next(reader, None)
 
             for row in reader:
-                if len(row) < 10:#Should only be a max of 8 fields of info for each node 
+                if len(row) < 10:#Should only be a max of 8 feilds of info for each node 
                     continue
                 node_name = row[1].strip()
                 node_type = row[2].strip().lower()
-                pair_type = row[3].strip().lower()
-                cam_type = row[4].strip()
-                vehicle_direction = row[5].strip().lower()
-                node_x = float(row[6])
-                node_y = float(row[7])
+                vehicle_direction = row[3].strip().lower()
+                node_x = float(row[4])
+                node_y = float(row[5])
 
                 neighbors = []
-                if row[8].strip():
-                    neighbors.append(row[8].strip())
-                if row[9].strip():
-                    neighbors.append(row[9].strip())
-            
+                if row[6].strip():
+                    neighbors.append(row[6].strip())
+                if row[7].strip():
+                    neighbors.append(row[7].strip())
+
+                pair_type = row[8].strip()
+                cam_type = row[9].strip()
+
                 graph[node_name] = {
                     "x": node_x,
                     "y": node_y,
@@ -46,7 +47,7 @@ def load_graph_from_csv(csv_filename):#This function get the directed graph from
                     "cam_type": cam_type,
                 }
 
-                if node_type.lower() == "entry":
+                if node_type == "entry":
                     entry_nodes.append(node_name)
                 elif node_type == "exit":
                     exit_nodes.append(node_name)
@@ -54,73 +55,8 @@ def load_graph_from_csv(csv_filename):#This function get the directed graph from
     
     except Exception as e:
         print(f"Error loading CSV {csv_filename}: {e}")
-        print(f"Graph loaded with {len(graph)} nodes: {list(graph.keys())[:5]}...")
-
     
     return graph, entry_nodes, exit_nodes,
-#########################################################################################################
-
-
-# Add this to simulation.py
-
-#def run_simulation_with_custom_timings(timing_vector,traffic_lights):
-    import time
-    import random
-    import pygame
-    import threading
-    import csv
-
-    seed = random.randint(0, 999999)
-    random.seed(seed)
-
-    # Apply timing vector
-    for i, light in enumerate(traffic_lights):
-        if i < len(timing_vector):
-            light.green_duration = float(timing_vector[i])
-
-    vehicles_ml = []
-    vehicles_static = []
-    lock = threading.Lock()
-    global simulation_running
-    simulation_running = True
-    
-    start_time = time.time()
-    duration = 30
-    total_completed = 0
-    total_travel_time = 0
-
-    def move_vehicles(vehicles):
-        completed = 0
-        elapsed_sum = 0
-        for v in vehicles[:]:
-            if not v.move(vehicles):
-                travel_time = time.time() - v.spawn_time
-                completed += 1
-                elapsed_sum += travel_time
-                vehicles.remove(v)
-        return completed, elapsed_sum
-
-    while time.time() - start_time < duration:
-        with lock:
-            completed, elapsed = move_vehicles(vehicles_ml)
-            total_completed += completed
-            total_travel_time += elapsed
-        time.sleep(0.05)
-
-    simulation_running = False  # Let main handle thread management
-
-    avg_time = total_travel_time / total_completed if total_completed > 0 else -1
-
-    with open("model_run_log.csv", "a") as f:
-        writer = csv.writer(f)
-        writer.writerow([seed, *timing_vector, avg_time, total_completed])
-
-    return {
-        "seed": seed,
-        "avg_travel_time": avg_time,
-        "vehicles_completed": total_completed
-    }
-
 
 def select_random_entry(entry_nodes):#Randomly picks an entry node, will be called later to generate a vehicle at that node
     if not entry_nodes:
@@ -135,7 +71,7 @@ def is_node_occupied(node_name, all_vehicles, this_vehicle):# This function chec
 ############################################################################################################
 
 class TrafficLight:
-    def __init__(self, node_name, x, y, orientation, images, pair_type, cam_type,is_turning_lane=False):
+    def __init__(self, node_name, x, y, orientation, images,is_turning_lane=False):
         self.node_name = node_name
         self.x = x
         self.y = y
@@ -145,8 +81,6 @@ class TrafficLight:
         self.cycle_period = 8
         self.is_turning_lane = is_turning_lane
         self.vehicle_count = 0
-        self.pair_type
-        self.cam_type
 
     def update(self):
         t = time.time() % self.cycle_period
@@ -181,7 +115,7 @@ class TrafficLight:
 
 def create_traffic_lights(graph, horizontal_images, vertical_images):
     traffic_lights = []
-    for node_name, node_data, pair_type, cam_type in graph.items():
+    for node_name, node_data in graph.items():
         
         if node_data["node_type"].lower() in ("traffic_controller", "turning_lanes"):
             node_type = node_data["node_type"].lower()
@@ -203,7 +137,7 @@ def create_traffic_lights(graph, horizontal_images, vertical_images):
                 y=node_data["y"],
                 orientation=orientation,
                 images=images,
-                is_turning_lane=is_turning_lane
+                is_turning_lane=is_turning_lane,
 
             )
         
@@ -221,7 +155,6 @@ class WeatherEffect:
     def draw(self, screen):
         """Render the effect on the given screen."""
         pass
-
 
 class SnowstormEffect(WeatherEffect):
     def __init__(self, screen_width, screen_height, num_flakes=100):
@@ -252,7 +185,6 @@ class SnowstormEffect(WeatherEffect):
         for (x, y, speed, radius) in self.flakes:
             pygame.draw.circle(screen, color, (int(x), int(y)), radius)
 
-
 class ThunderstormEffect(WeatherEffect):
     def __init__(self, screen_width, screen_height, num_drops=150):
         self.screen_width = screen_width
@@ -281,7 +213,6 @@ class ThunderstormEffect(WeatherEffect):
             end_y = y + length
             pygame.draw.line(screen, color, (x, y), (x, end_y), width=1)
 
-
 class ExtremeHeatEffect(WeatherEffect):
     def __init__(self, screen_width, screen_height):
         self.screen_width = screen_width
@@ -301,7 +232,6 @@ class ExtremeHeatEffect(WeatherEffect):
     def draw(self, screen):
         # Blit the overlay at the top
         screen.blit(self.overlay, (0, 0))
-
 
 class ModerateWindEffect(WeatherEffect):
     def __init__(self, screen_width, screen_height, num_lines=50):
@@ -365,7 +295,7 @@ def create_weather_effect(tier3_info, screen_width, screen_height):
     else:
         return None
 
-
+####################################################################################################################
 
 class BaseVehicle:
 
@@ -537,6 +467,7 @@ class Semitruck(BaseVehicle):
     def set_image_by_direction(self, direction):
         if direction in self.images:
             self.image = self.images[direction]
+
 ####################################################################################################################
 
 def spawn_vehicles_thread(
@@ -622,7 +553,8 @@ def spawn_vehicles_thread(
             vehicles_ml.append(new_vehicle_m)
             vehicle_counter += 1  # Count the vehicle
 
-######################################################################################################################
+####################################################################################################################
+
 def pick_traffic_conditions():
     """
     Returns a tuple:
@@ -812,7 +744,48 @@ def pick_traffic_conditions():
 
     return tier1_info, tier2_info, tier3_info
 
-########################################################################################################################################################
+####################################################################################################################
+
+def run_simulation_with_custom_timings(timings):
+    global simulation_running
+    global vehicle_counter
+    vehicle_counter = 0
+
+    # Reuse much of the logic from main(), but use given timings
+    graph_static, entry_static, exit_static = load_graph_from_csv("Directed_Graph - Static.csv")
+    graph_ml, entry_ml, exit_ml = load_graph_from_csv("Directed_Graph - Machine_Learning.csv")
+
+    static_traffic_lights = create_traffic_lights(graph_static, {}, {})
+    ml_traffic_lights = create_traffic_lights(graph_ml, {}, {})
+
+    timing_iter = iter(timings)
+
+    for tl in ml_traffic_lights:
+        try:
+            tl.custom_green = next(timing_iter)
+        except StopIteration:
+            print("⚠️ Warning: Not enough timing values provided!")
+            tl.custom_green = 3.0  # or some default fallback
+
+
+    lights_state_ml = {tl.node_name: tl for tl in ml_traffic_lights}
+
+    # Collect vehicle counts just like in the main simulation
+    for _ in range(1000):  # run for 1000 frames as a stub
+        for tl in ml_traffic_lights:
+            tl.update()
+            # fake vehicle increments (simulate movement)
+            tl.vehicle_count += random.randint(0, 3)
+
+    # Return the predicted camera counts in order of cam_type
+    camera_nodes = sorted(
+        lights_state_ml.keys(),
+        key=lambda n: int(graph_ml[n]["cam_type"])
+    )
+    return [lights_state_ml[n].vehicle_count for n in camera_nodes]
+
+
+####################################################################################################################
 def main():
     global simulation_running
     global vehicle_counter
@@ -912,11 +885,13 @@ def main():
     total_completed = 0
     total_travel_time = 0
 
-
     # Create traffic lights for each graph.
     static_traffic_lights = create_traffic_lights(graph_static, horizontal_images, vertical_images)
-    ml_traffic_lights = create_traffic_lights(graph_ml, horizontal_images, vertical_images)
+    ml_traffic_lights = create_traffic_lights(graph_ml, horizontal_images, vertical_images,)
 
+    
+
+    """
     # Use fixed timing logic from TrafficLight.update()
     light_timing_vector = []
     for tl in ml_traffic_lights:
@@ -924,18 +899,28 @@ def main():
             light_timing_vector.append(2.0)  # turning lane green duration
         else:
             light_timing_vector.append(3.5)  # straight lane green duration
+    """
 
+
+    
+    from simulate_with_model import get_latest_ml_timings
+
+    light_timing_vector = get_latest_ml_timings()
+    print("🧠 ML Predicted Timing Vector:", light_timing_vector)
+    timing_iter = iter(light_timing_vector)
+
+    for tl in ml_traffic_lights:
+        try:
+            tl.custom_green = next(timing_iter)
+            print(f"Assigning ML light {tl.node_name} → green {tl.custom_green:.2f}s")
+
+        except StopIteration:
+            print("⚠️ Warning: Not enough timing values provided!")
+            tl.custom_green = 3.0
+    
 
     lights_state_static = {tl.node_name: tl for tl in static_traffic_lights}
     lights_state_ml = {tl.node_name: tl for tl in ml_traffic_lights}
-
-    # Assign unique camera indices (cam1, cam2, ..., camN)
-    all_camera_nodes = sorted(set(lights_state_ml.keys()) | set(lights_state_static.keys()))
-    camera_indices = {name: i for i, name in enumerate(all_camera_nodes)}
-    print("CAMERA INDEX MAP (cam# → node name):")
-    for node_name, index in camera_indices.items():
-        print(f"cam{index + 1}: {node_name}")
-
 
 
     tier1_info, tier2_info, tier3_info = pick_traffic_conditions()
@@ -974,11 +959,10 @@ def main():
     spawner_thread.start()
 
     weather_effect = create_weather_effect(tier3_info, bg_width, bg_height)
-
     sim_start_time = time.time()
     running = True
     while running:
-        dt = clock.tick(120)
+        dt = clock.tick(240)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1043,44 +1027,41 @@ def main():
         f.write("node_name,vehicle_count\n")
         for light in list(lights_state_ml.values()):
             f.write(f"{light.node_name},{light.vehicle_count}\n")
-    
-    # Initialize vector of 0s, length = number of cameras
-    camera_counts = [0] * len(camera_indices)
 
-    # Fill with counts from ML and static lights
-    for light_dict in (lights_state_ml):
-        for node_name, light in light_dict.items():
-            idx = camera_indices[node_name]
-            camera_counts[idx] += light.vehicle_count  # Add to total (in case both sides exist)
+    camera_nodes = sorted(
+        lights_state_ml.keys(),
+        key=lambda n: int(graph_ml[n]["cam_type"])
+    )
+    camera_indices = { name: idx for idx, name in enumerate(camera_nodes) }
 
+    # (2) Fill camera_counts in that order:
+    camera_counts = [0] * len(camera_nodes)
+    for node_name, light in lights_state_ml.items():
+        idx = camera_indices[node_name]
+        camera_counts[idx] = light.vehicle_count
+
+    # (3) Write the CSV by walking camera_nodes/camera_counts in lock-step:
     with open("camera_vector_snapshot.csv", "w") as f:
         f.write("camera_id,vehicle_count\n")
-        for i, count in enumerate(camera_counts):
-            cam_name = f"cam{i+1}"
+        for idx, node_name in enumerate(camera_nodes):
+            cam_name = f"cam{idx+1}"
+            count    = camera_counts[idx]
             f.write(f"{cam_name},{count}\n")
-
-
-    # Build the camera vector
-    camera_counts = [0] * len(camera_indices)
-    for light_dict in (lights_state_ml,):  # only ML side
-        for node_name, light in light_dict.items():
-            idx = camera_indices[node_name]
-            camera_counts[idx] += light.vehicle_count
+    
 
     # Calculate final metrics
     duration = time.time() - sim_start_time
     average_travel_time = total_travel_time / total_completed if total_completed > 0 else 0
 
-    # Save to CSV
     with open("ml_dataset.csv", "a") as f:
         if os.stat("ml_dataset.csv").st_size == 0:
             f.write("seed," + ",".join([f"cam{i+1}" for i in range(len(camera_counts))]) +
                     ",sim_duration,avg_travel_time,vehicles_spawned,tier1,tier2,tier3," +
                     ",".join([f"t{i+1}" for i in range(16)]) + "\n")
 
-        f.write(f"{seed}," + ",".join(map(str, camera_counts)) + f",{duration:.2f},{average_travel_time:.2f},{vehicle_counter}," +
-                f"{tier1_info},{tier2_info},{tier3_info}," + ",".join(map(str, light_timing_vector)) + "\n")
-
+        f.write(f"{seed}," + ",".join(map(str, camera_counts)) +
+                f",{duration:.2f},{average_travel_time:.2f},{vehicle_counter}," +
+                ",".join(map(str, light_timing_vector)) + "\n")
 
     # Clean up
     simulation_running = False
