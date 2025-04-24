@@ -53,8 +53,7 @@ def visualize_directed_graph(csv_file):
         "Exit": "red",
         "Intermediate": "grey",
         "Middle": "blue",
-        "Traffic_Controller": "yellow",
-        "Turning_Lanes": "purple",
+        "Traffic_Controller": "yellow"
     }
     def get_node_color(node):
         node_type = G.nodes[node].get("node_type", "")
