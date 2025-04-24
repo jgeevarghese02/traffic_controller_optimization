@@ -81,11 +81,15 @@ class TrafficLight:
 =======
         self.vehicle_count = 0
         self.custom_green = 3.0  # ✅ Add this line to avoid attribute errors
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     def update(self):
         self.cycle_period = self.custom_green + 5  # 5s buffer for red/yellow
         t = time.time() % self.cycle_period
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 
         if self.orientation == "horizontal":
@@ -116,6 +120,8 @@ class TrafficLight:
                 else:
                     self.state = "red"
 =======
+=======
+>>>>>>> Stashed changes
     
         if self.is_turning_lane:
             # Turning: green first (0–custom_green)
@@ -914,8 +920,11 @@ def main():
     # Create traffic lights for each graph.
     static_traffic_lights = create_traffic_lights(graph_static, horizontal_images, vertical_images)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     ml_traffic_lights = create_traffic_lights(graph_ml, horizontal_images, vertical_images)
 =======
+=======
+>>>>>>> Stashed changes
 
     for tl in static_traffic_lights:
         tl.custom_green = 1.5  # or 6.0+ if you want longer green cycles for testing
@@ -938,6 +947,9 @@ def main():
             print(f"⚠️ Defaulting {tl.node_name} to 3.0s (invalid ML timing)", flush=True)
             tl.custom_green = 3.0
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     lights_state_static = {tl.node_name: tl for tl in static_traffic_lights}
@@ -983,7 +995,11 @@ def main():
     running = True
     while running:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         dt = clock.tick(120)
+=======
+        dt = clock.tick(60)
+>>>>>>> Stashed changes
 =======
         dt = clock.tick(60)
 >>>>>>> Stashed changes
