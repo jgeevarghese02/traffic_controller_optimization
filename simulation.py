@@ -20,11 +20,7 @@ def load_graph_from_csv(csv_filename):#This function get the directed graph from
             header = next(reader, None)
 
             for row in reader:
-<<<<<<< HEAD
                 if len(row) < 10:#Should only be a max of 8 feilds of info for each node 
-=======
-                if len(row) < 8:#Should only be a max of 8 feilds of info for each node 
->>>>>>> parent of fdde4da (ML Progress)
                     continue
                 node_name = row[1].strip()
                 node_type = row[2].strip().lower()
@@ -61,10 +57,6 @@ def load_graph_from_csv(csv_filename):#This function get the directed graph from
         print(f"Error loading CSV {csv_filename}: {e}")
     
     return graph, entry_nodes, exit_nodes,
-<<<<<<< HEAD
-=======
-#########################################################################################################
->>>>>>> parent of fdde4da (ML Progress)
 
 def select_random_entry(entry_nodes):#Randomly picks an entry node, will be called later to generate a vehicle at that node
     if not entry_nodes:
@@ -88,47 +80,30 @@ class TrafficLight:
         self.state = "red"
         self.cycle_period = 8
         self.is_turning_lane = is_turning_lane
+        self.vehicle_count = 0
 
     def update(self):
         t = time.time() % self.cycle_period
 
-        if self.orientation == "horizontal":
-            if self.is_turning_lane:
-                # Example: turning lane gets green from 0–2s, then red.
-                if t < 1:
-                    self.state = "green"
-                else:
-                    self.state = "red"
+        if self.is_turning_lane:
+            # TURNING lanes: Green first (0–2s), then red rest of cycle
+            if t < 2:
+                self.state = "green"
+            elif t < 2.5:
+                self.state = "yellow"
             else:
-                # Straight lane: red for first 2s, then green until 5s, yellow until 7s, red rest.
-                if t < 1:
-                    self.state = "red"
-                elif t < 5:
-                    self.state = "green"
-                elif t < 6:
-                    self.state = "yellow"
-                else:
-                    self.state = "red"
-        else:  # vertical
-            # Offset the vertical cycle so it starts green later in the 12s window.
-            if self.is_turning_lane:
-                # Red until 7s, green 7–9s, then red.
-                if t < 5:
-                    self.state = "red"
-                elif t < 6:
-                    self.state = "green"
-                else:
-                    self.state = "red"
+                self.state = "red"
+        else:
+            # STRAIGHT lanes: Green after turning lane finishes (2.5–6s), then yellow
+            if t < 2.5:
+                self.state = "red"
+            elif t < 6:
+                self.state = "green"
+            elif t < 7:
+                self.state = "yellow"
             else:
-                # Red until 9s, green 9–11s, yellow 11–12s, then red again.
-                if t < 6:
-                    self.state = "red"
-                elif t < 7:
-                    self.state = "green"
-                elif t < 8:
-                    self.state = "yellow"
-                else:
-                    self.state = "red"
+                self.state = "red"
+
 
     def draw(self, screen):
         img = self.images.get(self.state)
@@ -136,25 +111,24 @@ class TrafficLight:
             rect = img.get_rect(center=(self.x, self.y))
             screen.blit(img, rect)
 
-
-# Hard-code which nodes are turning lanes:
-TURNING_LANE_NODES = {
-    "V.2.9", "V.2.16", "V.3.10", "V.3.17", "V.6.9", "V.6.16", "V.7.10", "V.7.17", "H.2.8", "H.2.13", "H.3.7", "H.3.12", "H.6.8", "H.6.13", "H.7.7", "H.7.12",
-     "Y.2.9", "Y.2.16", "Y.3.10", "Y.3.17", "Y.6.9", "Y.6.16", "Y.7.10", "Y.7.17", "X.2.8", "X.2.13", "X.3.7", "X.3.12", "X.6.8", "X.6.13", "X.7.7", "X.7.12",
-    }  # Add as many as you need
-
-
 def create_traffic_lights(graph, horizontal_images, vertical_images):
     traffic_lights = []
     for node_name, node_data in graph.items():
-        if node_data["node_type"].lower() == "traffic_controller":
-            direction = node_data["direction"]
+        
+        if node_data["node_type"].lower() in ("traffic_controller", "turning_lanes"):
+            node_type = node_data["node_type"].lower()
+            direction = node_data["direction"].lower()
+
+            # Determine if it's a turning lane
+            is_turning_lane = node_type == "turning_lanes"
+
+            # Set orientation normally
             orientation = "horizontal" if direction in ("eastside", "westside") else "vertical"
+
+            # Use different image set later if needed
             images = horizontal_images if orientation == "horizontal" else vertical_images
 
-            # Check if this node is in our hard-coded turning-lane set
-            is_turning_lane = node_name in TURNING_LANE_NODES
-
+            # Create the traffic light
             tl = TrafficLight(
                 node_name=node_name,
                 x=node_data["x"],
@@ -164,9 +138,10 @@ def create_traffic_lights(graph, horizontal_images, vertical_images):
                 is_turning_lane=is_turning_lane,
 
             )
+        
             traffic_lights.append(tl)
+   
     return traffic_lights
-
 
 class WeatherEffect:
     """Base class for all weather effects."""
@@ -359,7 +334,7 @@ class BaseVehicle:
             current_speed = self.base_speed               
         
         # If next node is a traffic_controller node, check the light
-        if self.graph[self.target_node]["node_type"] == "traffic_controller":
+        if self.graph[self.target_node]["node_type"] in ("traffic_controller", "turning_lanes"):
             #check the traffic light
             # self.lights_dict may be None if not provided, so check that first
             if self.light_state and self.target_node in self.light_state:
@@ -378,6 +353,10 @@ class BaseVehicle:
         if dist < current_speed:
             self.current_node = self.target_node
             self.num_nodes_passed += 1
+
+            if self.light_state and self.current_node in self.light_state:
+                self.light_state[self.current_node].vehicle_count += 1
+
             self.x = target_x
             self.y = target_y
             self.target_node = self.choose_next_node()
@@ -497,6 +476,7 @@ def spawn_vehicles_thread(
     tier1_info, tier2_info, tier3_info
 ):
     global simulation_running
+    global vehicle_counter
 
     # Extract Tier 1 spawn rates
     spawn_min = tier1_info["spawn_min"]
@@ -511,6 +491,7 @@ def spawn_vehicles_thread(
 
     while simulation_running:
         # Tier 1 controls how often we spawn
+        
         time.sleep(random.uniform(spawn_min, spawn_max))
         if not simulation_running:
             break
@@ -567,14 +548,10 @@ def spawn_vehicles_thread(
 
             vehicles_static.append(new_vehicle_s)
             vehicles_ml.append(new_vehicle_m)
-<<<<<<< HEAD
             vehicle_counter += 1  # Count the vehicle
 
 ####################################################################################################################
 
-=======
-######################################################################################################################
->>>>>>> parent of fdde4da (ML Progress)
 def pick_traffic_conditions():
     """
     Returns a tuple:
@@ -808,7 +785,14 @@ def run_simulation_with_custom_timings(timings):
 ####################################################################################################################
 def main():
     global simulation_running
+    global vehicle_counter
+    vehicle_counter = 0
+
     pygame.init()
+
+    seed = random.randint(0, 999999)  # or use one passed in
+    random.seed(seed)
+
 
     #This is the file that the ml model will read to be able to adapt to the current traffic conditions and flow
     if not os.path.exists("reinforcement_data.txt"):
@@ -898,20 +882,16 @@ def main():
         "green": pygame.image.load("images/traffic_light_left_green.png").convert_alpha()
     }
 
-<<<<<<< HEAD
     total_completed = 0
     total_travel_time = 0
 
-=======
->>>>>>> parent of fdde4da (ML Progress)
     # Create traffic lights for each graph.
     static_traffic_lights = create_traffic_lights(graph_static, horizontal_images, vertical_images)
     ml_traffic_lights = create_traffic_lights(graph_ml, horizontal_images, vertical_images,)
 
-<<<<<<< HEAD
     
 
-    """
+   
     # Use fixed timing logic from TrafficLight.update()
     light_timing_vector = []
     for tl in ml_traffic_lights:
@@ -919,10 +899,10 @@ def main():
             light_timing_vector.append(2.0)  # turning lane green duration
         else:
             light_timing_vector.append(3.5)  # straight lane green duration
+   
+
+
     """
-
-
-    
     from simulate_with_model import get_latest_ml_timings
 
     light_timing_vector = get_latest_ml_timings()
@@ -937,17 +917,12 @@ def main():
         except StopIteration:
             print("⚠️ Warning: Not enough timing values provided!")
             tl.custom_green = 3.0
-    
+    """
 
     lights_state_static = {tl.node_name: tl for tl in static_traffic_lights}
     lights_state_ml = {tl.node_name: tl for tl in ml_traffic_lights}
 
 
-=======
-    lights_state_static = {tl.node_name: tl for tl in static_traffic_lights}
-    lights_state_ml = {tl.node_name: tl for tl in ml_traffic_lights}
-
->>>>>>> parent of fdde4da (ML Progress)
     tier1_info, tier2_info, tier3_info = pick_traffic_conditions()
     tier1_image = pygame.image.load(tier1_info["image_path"]).convert_alpha()
     tier1_rect = tier1_image.get_rect()
@@ -984,11 +959,7 @@ def main():
     spawner_thread.start()
 
     weather_effect = create_weather_effect(tier3_info, bg_width, bg_height)
-<<<<<<< HEAD
     sim_start_time = time.time()
-=======
-
->>>>>>> parent of fdde4da (ML Progress)
     running = True
     while running:
         dt = clock.tick(240)
@@ -1008,6 +979,7 @@ def main():
                     elapsed = time.time() - v.spawn_time
                     with open("static_result_metrics.txt", "a") as f:
                         f.write(f"{elapsed:.3f}\n")
+                    
                     vehicles_static.remove(v)
 
             # Update ML side
@@ -1017,6 +989,8 @@ def main():
                     elapsed = time.time() - v.spawn_time
                     with open("ml_result_metrics.txt", "a") as f:
                         f.write(f"{elapsed:.3f}\n")
+                    total_completed += 1
+                    total_travel_time += elapsed
 
                     if v.side == "ml":
                         with open("reinforcement_data.txt", "a") as rf:
@@ -1049,7 +1023,6 @@ def main():
 
         pygame.display.flip()
 
-<<<<<<< HEAD
     with open("camera_snapshot.txt", "w") as f:
         f.write("node_name,vehicle_count\n")
         for light in list(lights_state_ml.values()):
@@ -1090,8 +1063,6 @@ def main():
                 f",{duration:.2f},{average_travel_time:.2f},{vehicle_counter}," +
                 ",".join(map(str, light_timing_vector)) + "\n")
 
-=======
->>>>>>> parent of fdde4da (ML Progress)
     # Clean up
     simulation_running = False
     spawner_thread.join()

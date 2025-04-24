@@ -2823,3 +2823,8 @@ Bulldozer,7.733,26,1
 Bulldozer,4.038,24,1
 =======
 >>>>>>> parent of fdde4da (ML Progress)
+Semitruck,8.922,17,0.4
+Bulldozer,8.347,16,0.5
+Semitruck,10.582,17,0.4
+Semitruck,8.622,17,0.4
+Police_Car,6.838,31,0.8

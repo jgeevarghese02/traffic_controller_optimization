@@ -27,7 +27,7 @@ with torch.no_grad():
     timing_vector = model(input_tensor).numpy().flatten()
 
 timing_vector = model(input_tensor).detach().numpy().flatten()
-timing_vector = timing_vector.tolist()  # ✅ Convert from ndarray to list
+timing_vector = timing_vector.tolist() 
 
 print("Predicted Timing Vector (16D):")
 print(np.round(timing_vector, 2))
@@ -40,8 +40,9 @@ print(np.round(timing_vector, 2))
 #result = run_simulation_with_custom_timings(timing_vector)
 #print("Simulation Result:", result)
 
-#def get_latest_ml_timings():
-
+# simulate_with_model.py updates (fix get_latest_ml_timings)
+"""
+def get_latest_ml_timings():
     import torch
     import pandas as pd
     from train_model import TimingNet
@@ -65,3 +66,4 @@ print(np.round(timing_vector, 2))
         output = model(input_tensor).numpy().flatten()
 
     return output.tolist()
+"""
