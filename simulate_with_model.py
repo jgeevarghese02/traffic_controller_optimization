@@ -52,7 +52,7 @@ def get_latest_ml_timings():
     data = pd.read_csv("camera_vector_snapshot.csv")
     cam_vector = data["vehicle_count"].values[:32]
     scaler = StandardScaler()
-    scaler.fit(pd.read_csv("ml_dataset.csv").iloc[:, 1:33])
+    scaler.fit(pd.read_csv("ml_dataset_synthetic.csv").iloc[:, 1:33])
     cam_vector_scaled = scaler.transform([cam_vector])
     print("Camera vector:", cam_vector)
     print("Scaled vector:", cam_vector_scaled)
