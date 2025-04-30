@@ -21,7 +21,9 @@ def visualize_directed_graph(csv_file):
             node_type=row["Node Type"],
             vehicle_direction=row["vehicle direction"],
             x=x_coord,
-            y=y_coord
+            y=y_coord,
+            pair_type=row["Pair Type"],
+            cam_type=row["Cam Type"],
         )
 
     #Add edges (directed) from each Node Name to the neighbor columns
